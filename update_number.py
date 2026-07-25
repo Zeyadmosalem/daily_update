@@ -76,6 +76,11 @@ def git_push():
 
 
 def update_cron_with_random_time():
+    import shutil
+    if os.name != "posix" or not shutil.which("crontab"):
+        print("Cron job update skipped (crontab is not available on this OS).")
+        return
+
     # Generate random hour (0-23) and minute (0-59)
     random_hour = random.randint(0, 23)
     random_minute = random.randint(0, 59)
