@@ -55,7 +55,7 @@ def generate_random_commit_message():
         raise ValueError(f"Unexpected generated text {text}")
 
 
-def git_commit(commit_date=None):
+def git_commit(commit_date=None, num=None):
     # Stage the changes
     subprocess.run(["git", "add", "number.txt"])
     
@@ -65,13 +65,16 @@ def git_commit(commit_date=None):
         else:
             commit_date = datetime.now()
 
-    date_str = commit_date.strftime("%Y-%m-%d")
-    iso_date = commit_date.strftime("%Y-%m-%dT12:00:00")
+    date_str = commit_date.strftime("%Y-%m-%d %H:%M:%S")
+    iso_date = commit_date.strftime("%Y-%m-%dT%H:%M:%S")
 
     if "FANCY_JOB_USE_LLM" in os.environ:
         commit_message = generate_random_commit_message()
     else:
-        commit_message = f"Update number: {date_str}"
+        if num is not None:
+            commit_message = f"Update number: {num} ({date_str})"
+        else:
+            commit_message = f"Update number: {date_str}"
         
     env = os.environ.copy()
     env["GIT_AUTHOR_DATE"] = iso_date
@@ -105,14 +108,14 @@ def main():
                 current_number = read_number()
                 new_number = current_number + 1
                 write_number(new_number)
-                git_commit(commit_date=current_date)
+                git_commit(commit_date=current_date, num=new_number)
             git_push()
             git_gc()
         else:
             current_number = read_number()
             new_number = current_number + 1
             write_number(new_number)
-            git_commit()
+            git_commit(num=new_number)
             git_push()
             git_gc()
     except Exception as e:
