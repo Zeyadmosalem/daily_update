@@ -3,6 +3,9 @@ import os
 import subprocess
 from datetime import datetime
 
+import sys
+from datetime import datetime, timedelta
+
 script_dir = os.path.dirname(os.path.abspath(__file__))
 os.chdir(script_dir)
 
@@ -52,16 +55,28 @@ def generate_random_commit_message():
         raise ValueError(f"Unexpected generated text {text}")
 
 
-def git_commit():
+def git_commit(commit_date=None):
     # Stage the changes
     subprocess.run(["git", "add", "number.txt"])
-    # Create commit with current date
+    
+    if commit_date is None:
+        if "FANCY_JOB_DATE" in os.environ:
+            commit_date = datetime.strptime(os.environ["FANCY_JOB_DATE"], "%Y-%m-%d")
+        else:
+            commit_date = datetime.now()
+
+    date_str = commit_date.strftime("%Y-%m-%d")
+    iso_date = commit_date.strftime("%Y-%m-%dT12:00:00")
+
     if "FANCY_JOB_USE_LLM" in os.environ:
         commit_message = generate_random_commit_message()
     else:
-        date = datetime.now().strftime("%Y-%m-%d")
-        commit_message = f"Update number: {date}"
-    subprocess.run(["git", "commit", "-m", commit_message])
+        commit_message = f"Update number: {date_str}"
+        
+    env = os.environ.copy()
+    env["GIT_AUTHOR_DATE"] = iso_date
+    env["GIT_COMMITTER_DATE"] = iso_date
+    subprocess.run(["git", "commit", "-m", commit_message], env=env)
 
 
 def git_push():
@@ -81,12 +96,25 @@ def git_gc():
 
 def main():
     try:
-        current_number = read_number()
-        new_number = current_number + 1
-        write_number(new_number)
-        git_commit()
-        git_push()
-        git_gc()
+        if len(sys.argv) > 1 and sys.argv[1] == "--streak":
+            num_days = int(sys.argv[2]) if len(sys.argv) > 2 else 21
+            start_date = datetime.now() - timedelta(days=num_days - 1)
+            print(f"Generating a {num_days}-day streak from {start_date.strftime('%Y-%m-%d')} to {datetime.now().strftime('%Y-%m-%d')}...")
+            for i in range(num_days):
+                current_date = start_date + timedelta(days=i)
+                current_number = read_number()
+                new_number = current_number + 1
+                write_number(new_number)
+                git_commit(commit_date=current_date)
+            git_push()
+            git_gc()
+        else:
+            current_number = read_number()
+            new_number = current_number + 1
+            write_number(new_number)
+            git_commit()
+            git_push()
+            git_gc()
     except Exception as e:
         print(f"Error: {str(e)}")
         exit(1)
