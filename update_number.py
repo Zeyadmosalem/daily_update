@@ -74,6 +74,11 @@ def git_push():
         print(result.stderr)
 
 
+def git_gc():
+    # Repack loose objects and prune git cache
+    subprocess.run(["git", "gc", "--prune=now", "--quiet"])
+
+
 def main():
     try:
         current_number = read_number()
@@ -81,6 +86,7 @@ def main():
         write_number(new_number)
         git_commit()
         git_push()
+        git_gc()
     except Exception as e:
         print(f"Error: {str(e)}")
         exit(1)
