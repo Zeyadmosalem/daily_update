@@ -20,39 +20,53 @@ def write_number(num):
         f.write(str(num))
 
 
+_generator = None
+
+
+def get_generator():
+    global _generator
+    if _generator is None:
+        from transformers import logging, pipeline
+        logging.set_verbosity_error()
+        _generator = pipeline(
+            "text-generation",
+            model="openai-community/gpt2",
+        )
+    return _generator
+
+
 def generate_random_commit_message():
-    from transformers import pipeline
+    import random
+    import re
+    try:
+        generator = get_generator()
+        prompt = (
+            "Generate a short Git commit message following Conventional Commits format (e.g., feat(auth): add login endpoint).\n"
+            "Commit message: "
+        )
+        generated = generator(
+            prompt,
+            max_new_tokens=30,
+            num_return_sequences=1,
+            temperature=0.8,
+            top_k=50,
+            top_p=0.9,
+            truncation=True,
+            return_full_text=False,
+        )
+        new_text = generated[0]["generated_text"].strip()
+        first_line = new_text.splitlines()[0].strip() if new_text else ""
+        first_line = re.sub(r'^[-\s*`"\'`]+', '', first_line).strip()
+        if len(first_line) > 5:
+            return first_line
+    except Exception as e:
+        pass
 
-    generator = pipeline(
-        "text-generation",
-        model="openai-community/gpt2",
-    )
-    prompt = """
-        Generate a Git commit message following the Conventional Commits standard. The message should include a type, an optional scope, and a subject.Please keep it short. Here are some examples:
+    types = ["feat", "fix", "chore", "refactor", "docs", "style"]
+    scopes = ["core", "tracker", "deps", "config", "utils", "api"]
+    subjects = ["update sequential counter", "increment daily count", "optimize streak calculation", "sync latest number"]
+    return f"{random.choice(types)}({random.choice(scopes)}): {random.choice(subjects)}"
 
-        - feat(auth): add user authentication module
-        - fix(api): resolve null pointer exception in user endpoint
-        - docs(readme): update installation instructions
-        - chore(deps): upgrade lodash to version 4.17.21
-        - refactor(utils): simplify date formatting logic
-
-        Now, generate a new commit message:
-    """
-    generated = generator(
-        prompt,
-        max_new_tokens=50,
-        num_return_sequences=1,
-        temperature=0.9,  # Slightly higher for creativity
-        top_k=50,  # Limits sampling to top 50 logits
-        top_p=0.9,  # Nucleus sampling for diversity
-        truncation=True,
-    )
-    text = generated[0]["generated_text"]
-
-    if "- " in text:
-        return text.rsplit("- ", 1)[-1].strip()
-    else:
-        raise ValueError(f"Unexpected generated text {text}")
 
 
 def git_commit(commit_date=None, num=None):
