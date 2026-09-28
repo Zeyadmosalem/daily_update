@@ -125,6 +125,18 @@ def main():
                 git_commit(commit_date=current_date, num=new_number)
             git_push()
             git_gc()
+        elif len(sys.argv) > 1 and sys.argv[1] in ("--today", "--count"):
+            count = int(sys.argv[2]) if len(sys.argv) > 2 else 25
+            now = datetime.now()
+            print(f"Generating {count} commits for today ({now.strftime('%Y-%m-%d')})...")
+            for i in range(count):
+                commit_time = now + timedelta(seconds=i)
+                current_number = read_number()
+                new_number = current_number + 1
+                write_number(new_number)
+                git_commit(commit_date=commit_time, num=new_number)
+            git_push()
+            git_gc()
         else:
             current_number = read_number()
             new_number = current_number + 1
