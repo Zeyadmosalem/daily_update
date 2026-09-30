@@ -73,14 +73,18 @@ def git_commit(commit_date=None, num=None):
     # Stage the changes
     subprocess.run(["git", "add", "number.txt"])
     
+    env = os.environ.copy()
     if commit_date is None:
         if "FANCY_JOB_DATE" in os.environ:
-            commit_date = datetime.strptime(os.environ["FANCY_JOB_DATE"], "%Y-%m-%d")
+            commit_date = datetime.strptime(os.environ["FANCY_JOB_DATE"], "%Y-%m-%d").astimezone()
         else:
-            commit_date = datetime.now()
+            commit_date = datetime.now().astimezone()
+    else:
+        if commit_date.tzinfo is None:
+            commit_date = commit_date.astimezone()
 
     date_str = commit_date.strftime("%Y-%m-%d %H:%M:%S")
-    iso_date = commit_date.strftime("%Y-%m-%dT%H:%M:%S")
+    iso_date = commit_date.isoformat()
 
     if "FANCY_JOB_USE_LLM" in os.environ:
         commit_message = generate_random_commit_message()
@@ -90,7 +94,6 @@ def git_commit(commit_date=None, num=None):
         else:
             commit_message = f"Update number: {date_str}"
         
-    env = os.environ.copy()
     env["GIT_AUTHOR_DATE"] = iso_date
     env["GIT_COMMITTER_DATE"] = iso_date
     subprocess.run(["git", "commit", "-m", commit_message], env=env)
